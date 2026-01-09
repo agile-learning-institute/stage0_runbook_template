@@ -1,0 +1,18 @@
+# Example: Basic runbook packaging (no additional tools)
+# This is the simplest Dockerfile - just packages your runbooks
+# 
+# Usage:
+#   docker build -f samples/Dockerfile.basic -t my-runbooks:latest .
+#   docker run --rm my-runbooks:latest runbook execute --runbook /opt/stage0/runbooks/my-runbook.md
+
+FROM ghcr.io/agile-learning-institute/stage0_runbook_api:latest
+
+# Create directory for runbooks
+RUN mkdir -p /opt/stage0/runbooks
+
+# Copy runbooks folder into the container
+# Assumes runbooks are in ./runbooks/ relative to build context
+COPY runbooks/ /opt/stage0/runbooks/
+
+# Set working directory to runbooks location for convenience
+WORKDIR /opt/stage0/runbooks

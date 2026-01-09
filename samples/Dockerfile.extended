@@ -1,0 +1,42 @@
+# Example: Extending the extended image (includes Docker CLI and GitHub CLI)
+# This adds additional tools beyond what's in the extended base image
+# 
+# Usage:
+#   docker build -f samples/Dockerfile.extended -t my-runbooks:extended .
+#   docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+#     -e GITHUB_TOKEN=$GITHUB_TOKEN \
+#     my-runbooks:extended runbook execute --runbook /opt/stage0/runbooks/my-runbook.md
+
+FROM ghcr.io/agile-learning-institute/stage0_runbook_api:extended
+
+# Add additional tools beyond Docker CLI and GitHub CLI
+# Example: Add AWS CLI and Terraform
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        unzip \
+        gnupg \
+        software-properties-common && \
+    # Install AWS CLI v2
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws && \
+    # Install Terraform
+    curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add - && \
+    apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" && \
+    apt-get update && \
+    apt-get install -y terraform && \
+    rm -rf /var/lib/apt/lists/*
+
+# Verify installations
+RUN aws --version && terraform version
+
+# Create directory for runbooks
+RUN mkdir -p /opt/stage0/runbooks
+
+# Copy runbooks folder into the container
+COPY runbooks/ /opt/stage0/runbooks/
+
+# Set working directory
+WORKDIR /opt/stage0/runbooks

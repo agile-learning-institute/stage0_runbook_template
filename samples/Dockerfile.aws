@@ -1,0 +1,31 @@
+# Example: Extending the base image with AWS CLI v2
+# 
+# Usage:
+#   docker build -f samples/Dockerfile.aws -t my-runbooks:aws .
+#   docker run --rm -e AWS_ACCESS_KEY_ID=xxx -e AWS_SECRET_ACCESS_KEY=yyy \
+#     my-runbooks:aws runbook execute --runbook /opt/stage0/runbooks/my-runbook.md
+
+FROM ghcr.io/agile-learning-institute/stage0_runbook_api:latest
+
+# Install AWS CLI v2
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        unzip && \
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws && \
+    rm -rf /var/lib/apt/lists/*
+
+# Verify installation
+RUN aws --version
+
+# Create directory for runbooks
+RUN mkdir -p /opt/stage0/runbooks
+
+# Copy runbooks folder into the container
+COPY runbooks/ /opt/stage0/runbooks/
+
+# Set working directory
+WORKDIR /opt/stage0/runbooks

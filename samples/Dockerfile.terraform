@@ -1,0 +1,31 @@
+# Example: Extending the base image with Terraform
+# 
+# Usage:
+#   docker build -f samples/Dockerfile.terraform -t my-runbooks:terraform .
+#   docker run --rm my-runbooks:terraform runbook execute --runbook /opt/stage0/runbooks/my-runbook.md
+
+FROM ghcr.io/agile-learning-institute/stage0_runbook_api:latest
+
+# Install Terraform
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        gnupg \
+        software-properties-common && \
+    curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add - && \
+    apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" && \
+    apt-get update && \
+    apt-get install -y terraform && \
+    rm -rf /var/lib/apt/lists/*
+
+# Verify installation
+RUN terraform version
+
+# Create directory for runbooks
+RUN mkdir -p /opt/stage0/runbooks
+
+# Copy runbooks folder into the container
+COPY runbooks/ /opt/stage0/runbooks/
+
+# Set working directory
+WORKDIR /opt/stage0/runbooks

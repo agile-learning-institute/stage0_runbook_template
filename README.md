@@ -84,91 +84,14 @@ volumes:
 
 ## Creating Custom Extended Images
 
-You can create your own extended Dockerfile based on your specific needs. Here are common patterns:
+You can create your own extended Dockerfile based on your specific needs. Sample Dockerfiles are provided in the `samples/` directory:
 
-### Pattern 1: Add Single Tool
+- **[Dockerfile.basic](samples/Dockerfile.basic)** - Basic runbook packaging with no additional tools
+- **[Dockerfile.aws](samples/Dockerfile.aws)** - Extends base image with AWS CLI v2
+- **[Dockerfile.terraform](samples/Dockerfile.terraform)** - Extends base image with Terraform
+- **[Dockerfile.extended](samples/Dockerfile.extended)** - Extends the extended image (Docker + GitHub CLI) with additional tools
 
-```dockerfile
-FROM ghcr.io/agile-learning-institute/stage0_runbook_api:latest
-
-# Add your custom tool
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends your-tool && \
-    rm -rf /var/lib/apt/lists/*
-
-# Or install from a package manager
-RUN curl -fsSL https://your-tool-installer.sh | sh
-```
-
-### Pattern 2: Add Multiple Tools
-
-```dockerfile
-FROM ghcr.io/agile-learning-institute/stage0_runbook_api:latest
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        tool1 \
-        tool2 \
-        tool3 && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install tools from other sources
-RUN curl -fsSL https://tool-installer.sh | sh
-```
-
-### Pattern 3: Extend the Extended Image
-
-```dockerfile
-FROM ghcr.io/agile-learning-institute/stage0_runbook_api:extended
-
-# Add additional tools beyond Docker CLI and GitHub CLI
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        awscli \
-        terraform && \
-    rm -rf /var/lib/apt/lists/*
-```
-
-## Example: AWS CLI Extension
-
-```dockerfile
-FROM ghcr.io/agile-learning-institute/stage0_runbook_api:latest
-
-# Install AWS CLI v2
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-        unzip && \
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && \
-    ./aws/install && \
-    rm -rf awscliv2.zip aws && \
-    rm -rf /var/lib/apt/lists/*
-
-# Verify installation
-RUN aws --version
-```
-
-## Example: Terraform Extension
-
-```dockerfile
-FROM ghcr.io/agile-learning-institute/stage0_runbook_api:latest
-
-# Install Terraform
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-        gnupg \
-        software-properties-common && \
-    curl -fsSL https://apt.releases.hashicorp.com/gpg | apt-key add - && \
-    apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main" && \
-    apt-get update && \
-    apt-get install -y terraform && \
-    rm -rf /var/lib/apt/lists/*
-
-# Verify installation
-RUN terraform version
-```
+Copy and customize one of these samples, or use them as a reference for creating your own Dockerfile.
 
 ## Packaging Runbooks
 
@@ -180,67 +103,16 @@ You can package a collection of verified runbooks directly into a container imag
 
 ### Basic Runbook Packaging
 
-Create a Dockerfile that packages runbooks:
-
-```dockerfile
-FROM ghcr.io/agile-learning-institute/stage0_runbook_api:latest
-
-# Create directory for runbooks
-RUN mkdir -p /opt/stage0/runbooks
-
-# Copy runbooks folder into the container
-# Assumes runbooks are in ./runbooks/ relative to build context
-COPY runbooks/ /opt/stage0/runbooks/
-
-# Set working directory to runbooks location for convenience
-WORKDIR /opt/stage0/runbooks
-```
-
-Build and use:
-
-```bash
-# Build the image with runbooks
-docker build -f Dockerfile -t my-runbooks:latest .
-
-# Run a packaged runbook
-docker run --rm \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -e GITHUB_TOKEN=$GITHUB_TOKEN \
-    my-runbooks:latest \
-    runbook execute --runbook /opt/stage0/runbooks/my-runbook.md
-```
+See [samples/Dockerfile.basic](samples/Dockerfile.basic) for a simple example that packages runbooks without additional tools.
 
 ### Packaging with Tools
 
-Combine tool extensions with runbook packaging:
+The sample Dockerfiles in `samples/` demonstrate how to combine tool extensions with runbook packaging:
+- [Dockerfile.aws](samples/Dockerfile.aws) - AWS CLI + runbooks
+- [Dockerfile.terraform](samples/Dockerfile.terraform) - Terraform + runbooks
+- [Dockerfile.extended](samples/Dockerfile.extended) - Docker CLI, GitHub CLI, AWS CLI, Terraform + runbooks
 
-```dockerfile
-FROM ghcr.io/agile-learning-institute/stage0_runbook_api:extended
-
-# Create directory for runbooks
-RUN mkdir -p /opt/stage0/runbooks
-
-# Copy runbooks
-COPY runbooks/ /opt/stage0/runbooks/
-
-# Set working directory
-WORKDIR /opt/stage0/runbooks
-```
-
-This gives you:
-- Docker CLI and GitHub CLI (from extended base)
-- Your packaged runbooks
-- All in one immutable image
-
-### Reference Examples
-
-The Stage0 Runbook API repository includes example Dockerfiles in the `samples/` directory that you can reference:
-
-- **Dockerfile.extended**: Extends the base image with Docker CLI and GitHub CLI
-- **Dockerfile.with-runbooks**: Packages a collection of runbooks into the container
-- **Dockerfile.extended-with-runbooks**: Combines both approaches (tools and packaged runbooks)
-
-See the [SRE Documentation](https://github.com/agile-learning-institute/stage0_runbooks/blob/main/SRE.md) for more details on these examples.
+All sample Dockerfiles include runbook packaging, so you get your tools and runbooks in one immutable image.
 
 ---
 
