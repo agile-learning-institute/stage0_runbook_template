@@ -29,20 +29,20 @@ make down
 ## Quick Start (Script Author Guide)
 
 ```sh
-# Run the tool in Dev mode (mounts ./runbooks)
-make dev
+# Start API server with local runbooks mounted (run in one terminal)
+make api
 
-# Package runbooks into custom container
-make container
+# In another terminal, validate a runbook
+make validate RUNBOOK=./runbooks/test-a-book.md
+
+# Execute a runbook with environment variables
+make execute RUNBOOK=./runbooks/test-a-book.md ENV='VAR1=value1 VAR2=value2'
 
 # Open the WebUI 
 make open
 
-# Validate a runbook (assumes API is running in dev mode)
-make validate RUNBOOK=./runbooks/test-a-book.md
-
-# Execute a runbook with environment variables (assumes API is running)
-make execute RUNBOOK=./runbooks/test-a-book.md ENV='VAR1=value1 VAR2=value2'
+# Package runbooks into custom container
+make container
 ```
 
 ---
