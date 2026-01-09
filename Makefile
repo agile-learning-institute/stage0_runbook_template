@@ -6,19 +6,20 @@
 # 2. Adjust API_URL if using a different port or host
 # 3. Add any custom commands your team needs
 
-.PHONY: help api down open validate execute get-token container deploy
+.PHONY: help api down open validate execute get-token container deploy tail
 
 # Configuration - CUSTOMIZE THESE FOR YOUR ORG
 CONTAINER_IMAGE ?= ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest
 API_URL ?= http://localhost:8083
 RUNBOOK ?= 
-ENV ?= 
+DATA ?= {"env_vars":{}}
 
 help:
 	@echo "Available commands:"
 	@echo "  make api              - Start API server with local runbooks mounted (for testing runbooks)"
 	@echo "  make down             - Stop all services"
 	@echo "  make open             - Open web UI in browser"
+	@echo "  make tail             - Tail API logs (captures terminal, Ctrl+C to exit)"
 	@echo "  make validate         - Validate a runbook (requires RUNBOOK=path/to/runbook.md)"
 	@echo "  make execute          - Execute a runbook (requires RUNBOOK=path/to/runbook.md)"
 	@echo "  make container        - Build container with your runbooks"
@@ -26,8 +27,8 @@ help:
 	@echo ""
 	@echo "Examples:"
 	@echo "  make api              # Start API in one terminal"
-	@echo "  make validate RUNBOOK=./runbooks/MyRunbook.md  # In another terminal"
-	@echo "  make execute RUNBOOK=./runbooks/MyRunbook.md ENV='VAR1=value1 VAR2=value2'"
+	@echo "  make validate RUNBOOK=./runbooks/MyRunbook.md"
+	@echo "  make execute RUNBOOK=./runbooks/MyRunbook.md DATA='{\"env_vars\":{\"VAR1\":\"value1\",\"VAR2\":\"value2\"}}'"
 	@echo "  make container"
 	@echo "  make deploy"
 
@@ -57,48 +58,25 @@ get-token:
 		| jq -r '.access_token // .token // empty'
 
 validate:
-	@if [ -z "$(RUNBOOK)" ]; then \
-		echo "Error: RUNBOOK is required. Example: make validate RUNBOOK=./runbooks/MyRunbook.md"; \
-		exit 1; \
-	fi
-	@echo "Validating $(RUNBOOK)..."
-	@TOKEN=$$(make -s get-token); \
-	if [ -z "$$TOKEN" ]; then \
-		echo "Error: Failed to get authentication token. Is the API running? Run 'make api' first."; \
-		exit 1; \
-	fi; \
-	FILENAME=$$(basename $(RUNBOOK)); \
-	if [ -n "$(ENV)" ]; then \
-		QUERY="?$$(echo '$(ENV)' | sed 's/ /\\&/g')"; \
-	else \
-		QUERY=""; \
-	fi; \
-	curl -s -X PATCH "$(API_URL)/api/runbooks/$$FILENAME$$QUERY" \
+	@FILENAME=$$(basename $(RUNBOOK)); \
+	TOKEN=$$(make -s get-token); \
+	curl -s -X PATCH "$(API_URL)/api/runbooks/$$FILENAME" \
 		-H "Authorization: Bearer $$TOKEN" \
 		-H "Content-Type: application/json" \
+		-d '$(DATA)' \
 		| jq '.' || cat
 
 execute:
-	@if [ -z "$(RUNBOOK)" ]; then \
-		echo "Error: RUNBOOK is required. Example: make execute RUNBOOK=./runbooks/MyRunbook.md"; \
-		exit 1; \
-	fi
-	@echo "Executing $(RUNBOOK)..."
-	@TOKEN=$$(make -s get-token); \
-	if [ -z "$$TOKEN" ]; then \
-		echo "Error: Failed to get authentication token. Is the API running? Run 'make api' first."; \
-		exit 1; \
-	fi; \
-	FILENAME=$$(basename $(RUNBOOK)); \
-	if [ -n "$(ENV)" ]; then \
-		QUERY="?$$(echo '$(ENV)' | sed 's/ /\\&/g')"; \
-	else \
-		QUERY=""; \
-	fi; \
-	curl -s -X POST "$(API_URL)/api/runbooks/$$FILENAME$$QUERY" \
+	@FILENAME=$$(basename $(RUNBOOK)); \
+	TOKEN=$$(make -s get-token); \
+	curl -s -X POST "$(API_URL)/api/runbooks/$$FILENAME" \
 		-H "Authorization: Bearer $$TOKEN" \
 		-H "Content-Type: application/json" \
+		-d '$(DATA)' \
 		| jq '.' || cat
+
+tail:
+	docker logs -f stage0_runbook_api
 
 # Build container with your runbooks
 container:

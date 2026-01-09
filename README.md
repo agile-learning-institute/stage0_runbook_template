@@ -36,7 +36,7 @@ make api
 make validate RUNBOOK=./runbooks/test-a-book.md
 
 # Execute a runbook with environment variables
-make execute RUNBOOK=./runbooks/test-a-book.md ENV='VAR1=value1 VAR2=value2'
+make execute RUNBOOK=./runbooks/test-a-book.md DATA='{"env_vars":{"VAR1":"value1","VAR2":"value2"}}'
 
 # Open the WebUI 
 make open
@@ -70,13 +70,15 @@ The Makefile provides simple commands for testing runbooks using `curl` (no Pyth
 ## How It Works
 
 The Makefile uses `curl` to interact with the API:
-- `make dev` - Starts docker-compose with your local runbooks mounted
-- `make validate` - Gets a dev token, then calls the validate API endpoint
-- `make execute` - Gets a dev token, then calls the execute API endpoint
+- `make api` - Starts docker-compose with your local runbooks mounted
+- `make validate` - Gets a dev token, then calls the validate API endpoint (uses `DATA` parameter, defaults to `{"env_vars":{}}`)
+- `make execute` - Gets a dev token, then calls the execute API endpoint (uses `DATA` parameter, defaults to `{"env_vars":{}}`)
 - `make container` - Builds your custom container with runbooks
 - `make deploy` - Deploys using your packaged container
 
 All commands work without requiring Python or the CLI tool - just `make`, `curl`, and `jq` (for JSON formatting).
+
+**Note**: The `DATA` parameter accepts JSON in the form `{"env_vars":{...}}`. If not provided, it defaults to `{"env_vars":{}}` (empty environment variables).
 
 ---
 
