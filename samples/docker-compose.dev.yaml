@@ -1,0 +1,35 @@
+# Development Docker Compose - Volume-mounted runbooks
+# Best for: Local development and testing
+#
+# Usage:
+#   docker-compose -f samples/docker-compose.dev.yaml up
+
+services:
+  api:
+    image: ghcr.io/agile-learning-institute/stage0_runbook_api:latest
+    container_name: stage0_runbook_api
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      API_PORT: 8083
+      RUNBOOKS_DIR: /workspace/runbooks
+      ENABLE_LOGIN: "true"
+      LOGGING_LEVEL: "INFO"
+    volumes:
+      - ./runbooks:/workspace/runbooks:ro
+    working_dir: /workspace/runbooks
+    command: runbook serve --runbooks-dir /workspace/runbooks --port 8083
+
+  spa:
+    image: ghcr.io/agile-learning-institute/stage0_runbook_spa:latest
+    container_name: stage0_runbook_spa
+    restart: unless-stopped
+    ports:
+      - "8084:80"
+    environment:
+      API_HOST: api
+      API_PORT: 8083
+    depends_on:
+      api:
+        condition: service_started

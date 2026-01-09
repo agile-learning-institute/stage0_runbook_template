@@ -14,8 +14,7 @@ This is a GitHub Template Repo that you have used to create your own Custom, Dep
 ---
 
 # Welcome
-
-Write a warm welcome to the team's runbooks repo. This is where you write, test, and package runbooks for the team.
+This is <your org>'s DevOps runbook. Runbook automation is done using the [Stage0 Runbook system](https://github.com/agile-learning-institute/stage0_runbooks). Write a warm welcome to the team's runbooks repo, include standards or patterns for managing secrets or running scripts. This is where you write, test, and package runbooks for the team.
 
 ## Quick Start (Users Guide)
 
@@ -118,105 +117,14 @@ All sample Dockerfiles include runbook packaging, so you get your tools and runb
 
 # Customizing your docker-compose
 
-The `docker-compose.yaml` file configures how your runbook system runs. Here are common customization patterns:
+The `docker-compose.yaml` file configures how your runbook system runs. Sample configurations are provided in the `samples/` directory:
 
-## Basic Development Setup
+- **[docker-compose.dev.yaml](samples/docker-compose.dev.yaml)** - Development setup with volume-mounted runbooks
+- **[docker-compose.packaged.yaml](samples/docker-compose.packaged.yaml)** - Using packaged runbooks (no volume mounts)
+- **[docker-compose.extended.yaml](samples/docker-compose.extended.yaml)** - Extended image with Docker socket access
+- **[docker-compose.prod.yaml](samples/docker-compose.prod.yaml)** - Production configuration
 
-For local development with volume-mounted runbooks:
-
-```yaml
-services:
-  api:
-    image: ghcr.io/agile-learning-institute/stage0_runbook_api:latest
-    container_name: stage0_runbook_api
-    restart: unless-stopped
-    ports:
-      - "8083:8083"
-    environment:
-      API_PORT: 8083
-      RUNBOOKS_DIR: /workspace/runbooks
-      ENABLE_LOGIN: "true"
-      LOGGING_LEVEL: "INFO"
-    volumes:
-      - ./runbooks:/workspace/runbooks:ro
-    working_dir: /workspace/runbooks
-    command: runbook serve --runbooks-dir /workspace/runbooks --port 8083
-
-  spa:
-    image: ghcr.io/agile-learning-institute/stage0_runbook_spa:latest
-    container_name: stage0_runbook_spa
-    restart: unless-stopped
-    ports:
-      - "8084:80"
-    environment:
-      API_HOST: api
-      API_PORT: 8083
-    depends_on:
-      api:
-        condition: service_started
-```
-
-## Using Packaged Runbooks
-
-When using packaged runbooks (built with your custom Dockerfile), you don't need volume mounts:
-
-```yaml
-services:
-  api:
-    image: ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest
-    environment:
-      RUNBOOKS_DIR: /opt/stage0/runbooks
-    command: runbook serve --runbooks-dir /opt/stage0/runbooks --port 8083
-    # No volume mount needed - runbooks are in the image
-```
-
-## Using Extended Images with Docker Socket
-
-If your runbooks need Docker CLI access:
-
-```yaml
-services:
-  api:
-    image: ghcr.io/agile-learning-institute/stage0_runbook_api:extended
-    # ... other configuration
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock  # Required for Docker CLI
-      - ./runbooks:/workspace/runbooks:ro
-```
-
-## Production Configuration
-
-For production deployments, consider:
-
-```yaml
-services:
-  api:
-    image: ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest
-    restart: always
-    ports:
-      - "127.0.0.1:8083:8083"  # Only expose to localhost, use reverse proxy
-    environment:
-      API_PORT: 8083
-      RUNBOOKS_DIR: /opt/stage0/runbooks
-      ENABLE_LOGIN: "false"  # MUST be false in production
-      JWT_SECRET: "${JWT_SECRET}"  # From secrets manager
-      JWT_ISSUER: "your-identity-provider"
-      JWT_AUDIENCE: "runbook-api-production"
-      LOGGING_LEVEL: "WARNING"
-    volumes:
-      # Only if not using packaged runbooks
-      # - ./runbooks:/workspace/runbooks:ro
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8083/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-```
+Copy and customize one of these samples for your needs.
 
 **Important Production Notes**:
 - Set `ENABLE_LOGIN=false` to disable development login

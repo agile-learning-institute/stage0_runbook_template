@@ -1,0 +1,51 @@
+# Production Docker Compose
+# Best for: Production deployments with packaged runbooks
+#
+# Usage:
+#   1. Build your custom image: docker build -f Dockerfile -t ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest .
+#   2. Update the image name below
+#   3. Set environment variables (use secrets manager):
+#      export JWT_SECRET=$(openssl rand -hex 32)
+#      export JWT_ISSUER="your-identity-provider"
+#      export JWT_AUDIENCE="runbook-api-production"
+#   4. docker-compose -f samples/docker-compose.prod.yaml up -d
+
+services:
+  api:
+    image: ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest
+    restart: always
+    ports:
+      - "127.0.0.1:8083:8083"  # Only expose to localhost, use reverse proxy
+    environment:
+      API_PORT: 8083
+      RUNBOOKS_DIR: /opt/stage0/runbooks
+      ENABLE_LOGIN: "false"  # MUST be false in production
+      JWT_SECRET: "${JWT_SECRET}"  # From secrets manager
+      JWT_ISSUER: "your-identity-provider"
+      JWT_AUDIENCE: "runbook-api-production"
+      LOGGING_LEVEL: "WARNING"
+    volumes:
+      # Only if not using packaged runbooks
+      # - ./runbooks:/workspace/runbooks:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  spa:
+    image: ghcr.io/agile-learning-institute/stage0_runbook_spa:latest
+    restart: always
+    ports:
+      - "127.0.0.1:8084:80"  # Only expose to localhost
+    environment:
+      API_HOST: api
+      API_PORT: 8083
+    depends_on:
+      api:
+        condition: service_healthy

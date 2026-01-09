@@ -1,0 +1,26 @@
+# Docker Compose - Packaged Runbooks
+# Best for: Using runbooks packaged in a custom container image
+#
+# Usage:
+#   1. Build your custom image with runbooks: docker build -f Dockerfile -t ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest .
+#   2. Update the image name below
+#   3. docker-compose -f samples/docker-compose.packaged.yaml up
+
+services:
+  api:
+    image: ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest
+    environment:
+      RUNBOOKS_DIR: /opt/stage0/runbooks
+    command: runbook serve --runbooks-dir /opt/stage0/runbooks --port 8083
+    # No volume mount needed - runbooks are in the image
+
+  spa:
+    image: ghcr.io/agile-learning-institute/stage0_runbook_spa:latest
+    ports:
+      - "8084:80"
+    environment:
+      API_HOST: api
+      API_PORT: 8083
+    depends_on:
+      api:
+        condition: service_started
