@@ -6,7 +6,7 @@
 # 2. Adjust API_URL if using a different port or host
 # 3. Add any custom commands your team needs
 
-.PHONY: help api down open validate execute get-token container deploy tail
+.PHONY: help dev deploy down open validate execute get-token container tail
 
 # Configuration - CUSTOMIZE THESE FOR YOUR ORG
 CONTAINER_IMAGE ?= ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest
@@ -16,37 +16,38 @@ DATA ?= {"env_vars":{}}
 
 help:
 	@echo "Available commands:"
-	@echo "  make api              - Start API server with local runbooks mounted (for testing runbooks)"
-	@echo "  make down             - Stop all services"
+	@echo "  make container        - Build container with your runbooks"
+	@echo "  make dev              - Run your runbook in Dev mode (Mounts ./runbooks)"
+	@echo "  make deploy           - Run your runbook in Deploy mode (Packaged Runbooks)"
+	@echo "  make down             - Shut down containers"
 	@echo "  make open             - Open web UI in browser"
 	@echo "  make tail             - Tail API logs (captures terminal, Ctrl+C to exit)"
 	@echo "  make validate         - Validate a runbook (requires RUNBOOK=path/to/runbook.md)"
 	@echo "  make execute          - Execute a runbook (requires RUNBOOK=path/to/runbook.md)"
-	@echo "  make container        - Build container with your runbooks"
-	@echo "  make deploy           - Deploy using packaged runbooks"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make api              # Start API in one terminal"
+	@echo "  make container && make dev"
 	@echo "  make validate RUNBOOK=./runbooks/MyRunbook.md"
-	@echo "  make execute RUNBOOK=./runbooks/MyRunbook.md DATA='{\"env_vars\":{\"VAR1\":\"value1\",\"VAR2\":\"value2\"}}'"
-	@echo "  make container"
+	@echo "  make execute RUNBOOK=./runbooks/MyRunbook.md DATA='{\"env_vars\":{\"VAR1\":\"value1\"}}'"
 	@echo "  make deploy"
 
-# Start API server with local runbooks mounted (for runbook authors)
-# NOTE: Make sure docker-compose.yaml is configured for development (volume mounts enabled)
-api:
-	@$(MAKE) down || true
-	@echo "Starting API server with local runbooks mounted..."
-	@docker-compose up -d
-	@echo "Waiting for API to be ready..."
-	@timeout 30 bash -c 'until curl -sf http://localhost:8083/metrics > /dev/null; do sleep 1; done' || true
-	@echo "API is ready at http://localhost:8083"
-	@echo "Web UI is available at http://localhost:8084"
-	@echo "Runbooks are mounted from ./runbooks"
-	@echo "Use 'make down' to stop the API"
+container:
+	@echo "Building container image: $(CONTAINER_IMAGE)"
+	@docker build -f Dockerfile -t $(CONTAINER_IMAGE) .
+	@echo "Built: $(CONTAINER_IMAGE)"
 
+dev:
+	@$(MAKE) down || true
+	@docker-compose --profile runbook-dev up -d
+	@$(MAKE) open
+
+deploy:
+	@$(MAKE) down || true
+	@docker-compose --profile runbook-deploy up -d
+	@$(MAKE) open
+	
 down:
-	@docker-compose down
+	@docker-compose --profile runbook-dev --profile runbook-deploy down
 
 open:
 	@echo "Opening web UI..."
@@ -61,7 +62,7 @@ get-token:
 validate:
 	@FILENAME=$$(basename $(RUNBOOK)); \
 	TOKEN=$$(make -s get-token); \
-	curl -s -X PATCH "$(API_URL)/api/runbooks/$$FILENAME" \
+	curl -s -X PATCH "$(API_URL)/api/runbooks/$$FILENAME/validate" \
 		-H "Authorization: Bearer $$TOKEN" \
 		-H "Content-Type: application/json" \
 		-d '$(DATA)' \
@@ -70,29 +71,11 @@ validate:
 execute:
 	@FILENAME=$$(basename $(RUNBOOK)); \
 	TOKEN=$$(make -s get-token); \
-	curl -s -X POST "$(API_URL)/api/runbooks/$$FILENAME" \
+	curl -s -X POST "$(API_URL)/api/runbooks/$$FILENAME/execute" \
 		-H "Authorization: Bearer $$TOKEN" \
 		-H "Content-Type: application/json" \
 		-d '$(DATA)' \
 		| jq '.' || cat
 
 tail:
-	docker logs -f stage0_runbook_api
-
-# Build container with your runbooks
-container:
-	@echo "Building container image: $(CONTAINER_IMAGE)"
-	@docker build -f Dockerfile -t $(CONTAINER_IMAGE) .
-	@echo "Built: $(CONTAINER_IMAGE)"
-
-# Deploy using packaged runbooks
-# NOTE: Make sure docker-compose.yaml is configured for production:
-#   - Image name matches CONTAINER_IMAGE above
-#   - Packaged runbooks mode enabled (RUNBOOKS_DIR: ./runbooks, working_dir: /opt/stage0/runner)
-#   - Volume mounts commented out
-deploy:
-	@echo "Deploying with packaged runbooks..."
-	@docker-compose up -d
-	@echo "Waiting for services to be ready..."
-	@timeout 30 bash -c 'until curl -sf http://localhost:8083/metrics > /dev/null; do sleep 1; done' || true
-	@echo "Deployment complete. API at http://localhost:8083, UI at http://localhost:8084"
+	@docker logs -f stage0_runbook_api

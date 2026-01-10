@@ -1,10 +1,6 @@
 # Stage0 Runbook Template Dockerfile
-# This Dockerfile packages your runbooks into a custom container image
-#
-# Usage:
-#   1. Customize this file by uncommenting the sections you need
-#   2. Build: docker build -t ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest .
-#   3. Update docker-compose.yaml with your image name
+# This Dockerfile packages your runtime dependencies 
+# and runbooks into a custom container image. 
 #
 # Base image includes: Python 3.12, Flask API, Gunicorn, Prometheus metrics
 
@@ -100,7 +96,7 @@ RUN mkdir -p /opt/stage0/runner/runbooks
 
 # Copy runbooks folder into the container
 # Assumes runbooks are in ./runbooks/ relative to build context
-COPY runbooks/ /opt/stage0/runner/runbooks/
+COPY ./runbooks/ /opt/stage0/runner/runbooks/
 
 # Set working directory (matches docker-compose.yaml configuration)
 WORKDIR /opt/stage0/runner

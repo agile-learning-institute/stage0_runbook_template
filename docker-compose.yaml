@@ -1,78 +1,22 @@
 services:
-  ##################################
-  # Stage0 Runbook API Service
-  ##################################
-  api:
-    # CUSTOMIZE: Update this to your built container image
-    # For packaged runbooks (production): Use your custom image with runbooks
-    # For development with volume mounts: Use the base API image
+##################################
+# Custom Runbook Service (Development Profile)
+##################################
+  api-dev:
     image: ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest
-    # For development, uncomment below and comment out the line above:
-    # image: ghcr.io/agile-learning-institute/stage0_runbook_api:latest
-    
     container_name: stage0_runbook_api
     restart: unless-stopped
     ports:
       - "8083:8083"
-    
     environment:
       API_PORT: 8083
-      
-      # CONFIGURATION OPTION: Packaged Runbooks (Production - Default)
-      # Use this when runbooks are packaged in your Docker image
-      RUNBOOKS_DIR: ./runbooks
-      
-      # CONFIGURATION OPTION: Volume-mounted Runbooks (Development)
-      # Uncomment below and comment out the above line when developing locally
-      # RUNBOOKS_DIR: /workspace/runbooks
-      
-      # Authentication: Enable dev-login for local development
-      # For production, set this to "false" and configure proper JWT authentication
+      RUNBOOKS_DIR: /workspace/runbooks
       ENABLE_LOGIN: "true"
-      
-      # Logging level: DEBUG, INFO, WARNING, ERROR
       LOGGING_LEVEL: "INFO"
-      
-      # OPTIONAL: Production JWT Configuration
-      # Uncomment and configure these for production authentication
-      # JWT_SECRET: your-secret-key-here
-      # JWT_ISSUER: your-issuer
-      # JWT_AUDIENCE: your-audience
-      # JWT_TTL_MINUTES: 60
-    
-    # CONFIGURATION OPTION: Packaged Runbooks (Production - Default)
-    # Use this when runbooks are packaged in your Docker image
-    working_dir: /opt/stage0/runner
-    
-    # CONFIGURATION OPTION: Volume-mounted Runbooks (Development)
-    # Uncomment below and comment out the above line when developing locally
-    # working_dir: /workspace/runbooks
-    
-    # DEVELOPMENT ONLY: Uncomment to mount local runbooks for development
-    # This allows you to edit runbooks locally without rebuilding the container
-    # volumes:
-    #   - ./runbooks:/workspace/runbooks:ro
-    
-    # DEVELOPMENT ONLY: Override command for local development
-    # Uncomment if using volume mounts and the default command doesn't work
-    # command: runbook serve --runbooks-dir /workspace/runbooks --port 8083
-    
-    # OPTIONAL: Docker Socket Access (for runbooks that use Docker CLI)
-    # Uncomment if your runbooks need to interact with Docker
-    # volumes:
-    #   - /var/run/docker.sock:/var/run/docker.sock
-    
-    # OPTIONAL: Resource Limits (Recommended for Production)
-    # Uncomment and adjust based on your needs
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '2'
-    #       memory: 2G
-    #     reservations:
-    #       cpus: '0.5'
-    #       memory: 512M
-    
+    volumes:
+      - ./runbooks:/workspace/runbooks
+    profiles:
+      - runbook-dev
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8083/metrics')"]
       interval: 30s
@@ -80,41 +24,65 @@ services:
       retries: 3
       start_period: 10s
 
-  ##################################
-  # Stage0 Runbook SPA Service (Web UI)
-  ##################################
-  spa:
+  spa-dev:
     image: ghcr.io/agile-learning-institute/stage0_runbook_spa:latest
     container_name: stage0_runbook_spa
     restart: unless-stopped
     ports:
       - "8084:80"
-    
     environment:
-      # API connection: These should match your API service configuration
-      API_HOST: api
+      API_HOST: api-dev
       API_PORT: 8083
-      
-      # OPTIONAL: Custom API URL (if API is on different host/port)
-      # Uncomment if API is not on the default Docker network
-      # API_URL: http://api:8083
-    
+    profiles:
+      - runbook-dev
     depends_on:
-      api:
-        # Wait for API to be healthy before starting SPA
+      api-dev:
         condition: service_healthy
-    
-    # OPTIONAL: Resource Limits (Recommended for Production)
-    # Uncomment and adjust based on your needs
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '1'
-    #       memory: 512M
-    #     reservations:
-    #       cpus: '0.25'
-    #       memory: 256M
-    
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+##################################
+# Custom Runbook API Service (Deployed Profile)
+##################################
+  api-deploy:
+    image: ghcr.io/YOUR_ORG/YOUR_RUNBOOKS_IMAGE:latest
+    container_name: stage0_runbook_api
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      API_PORT: 8083
+      RUNBOOKS_DIR: ./runbooks
+      ENABLE_LOGIN: "true"
+      LOGGING_LEVEL: "INFO"
+    working_dir: /opt/stage0/runner
+    profiles:
+      - runbook-deploy
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8083/metrics')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  spa-deploy:
+    image: ghcr.io/agile-learning-institute/stage0_runbook_spa:latest
+    container_name: stage0_runbook_spa
+    restart: unless-stopped
+    ports:
+      - "8084:80"
+    environment:
+      API_HOST: api-deploy
+      API_PORT: 8083
+    profiles:
+      - runbook-deploy
+    depends_on:
+      api-deploy:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
