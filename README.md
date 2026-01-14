@@ -61,3 +61,4 @@ make execute ./runbooks/MyNewRunbook.md /
 
 - [Stage0 Runbooks Documentation](https://github.com/agile-learning-institute/stage0_runbooks)
 - [Runbook Format Specification](https://github.com/agile-learning-institute/stage0_runbook_api/blob/main/RUNBOOK.md)
+- **Join us on Discord**: [Runbooks Support Channel](https://discord.gg/Pcs8yTXPuh)
